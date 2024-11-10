@@ -4,7 +4,6 @@ namespace CouponCodes.Models
 {
     public class Coupon
     {
-
         // Constructor
         public Coupon()
         {

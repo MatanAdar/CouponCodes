@@ -1,5 +1,8 @@
 ﻿using CouponCodes.Data;
 using CouponCodes.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
@@ -7,20 +10,24 @@ namespace CouponCodes.Controllers
 {
     public class CouponsController : Controller
     {
+        private readonly UserManager<IdentityUser> _userManager;
         private readonly ApplicationDbContext _context;
 
         // Static variable to hold the final price between requests
         private static decimal finalPrice = 100m;  // Initialize with the base price (100)
 
 
-        public CouponsController(ApplicationDbContext context)
+        public CouponsController(UserManager<IdentityUser> userManager, ApplicationDbContext context)
         {
+            _userManager = userManager;
             _context = context;
         }
 
-        // Display all coupons
+        // Only admin can see the coupons and create/delete and etc
+        [Authorize(Roles = "Admin")]
         public IActionResult Index()
         {
+            // Display all coupons
             var coupons = _context.Coupon.ToList();
             return View(coupons);
         }
@@ -95,10 +102,15 @@ namespace CouponCodes.Controllers
         {
             if (ModelState.IsValid)
             {
+              
+                // Add the coupon to the database
                 _context.Coupon.Add(coupon);
-                _context.SaveChanges();
+                _context.SaveChangesAsync();
+
                 return RedirectToAction("Index");
             }
+
+            // If the model state is invalid, return the same view with the coupon object
             return View(coupon);
         }
 
