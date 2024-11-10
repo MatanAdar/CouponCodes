@@ -10,25 +10,20 @@ namespace CouponCodes.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<decimal>(
+            migrationBuilder.DropColumn(
                 name: "DiscountAmount",
-                table: "Coupon",
-                type: "decimal(18,2)",
-                nullable: false,
-                oldClrType: typeof(float),
-                oldType: "real");
+                table: "Coupon");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<float>(
+            migrationBuilder.AddColumn<decimal>(
                 name: "DiscountAmount",
                 table: "Coupon",
-                type: "real",
+                type: "decimal(18,2)",
                 nullable: false,
-                oldClrType: typeof(decimal),
-                oldType: "decimal(18,2)");
+                defaultValue: 0m);
         }
     }
 }

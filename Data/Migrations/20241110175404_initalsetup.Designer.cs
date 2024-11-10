@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CouponCodes.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241110125034_initalsetup")]
+    [Migration("20241110175404_initalsetup")]
     partial class initalsetup
     {
         /// <inheritdoc />
@@ -43,9 +43,6 @@ namespace CouponCodes.Data.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("DiscountAmount")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("DiscountValue")
                         .IsRequired()

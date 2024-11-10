@@ -41,9 +41,6 @@ namespace CouponCodes.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal>("DiscountAmount")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("DiscountValue")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
