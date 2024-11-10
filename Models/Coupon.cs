@@ -1,11 +1,19 @@
-﻿namespace CouponCodes.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace CouponCodes.Models
 {
     public class Coupon
     {
+
+        // Constructor
+        public Coupon()
+        {
+
+        }
         public int Id { get; set; }
 
         // Unique coupon code used for discount
-        public int CodeCoupon { get; set; }
+        public string CodeCoupon { get; set; }
 
         // Description of the coupon, visible to admins only
         public string Description { get; set; }
@@ -16,9 +24,11 @@
         // The date and time when the coupon was created, automatically set to Now upon creation
         public DateTime CreationDateAndTime { get; set; } = DateTime.Now;
 
-        // Discount type: either a fixed amount or a percentage
-        public decimal DiscountAmount { get; set; }  // Discount amount if it's a fixed discount
-        public float DiscountPercentage { get; set; } // Discount percentage if it's a percentage discount
+        //Discount value, which can be either amount or percentage (based on input)
+        //Make a validation to the input that not go under 0 or above 100 and only get number, %
+        [RegularExpression(@"^(\d+(\.\d{1,2})?%?)$", ErrorMessage = "Please enter a valid discount value (e.g., 20 or 20%).")]
+        [ValidDiscountValueAttribute(ErrorMessage = "Discount value must be between 0 and 100, either as an amount or percentage.")]
+        public string DiscountValue { get; set; }
 
         // Expiration date, if applicable (Null if no expiration)
         public DateTime? ExpirationDate { get; set; }
@@ -31,12 +41,6 @@
 
         // Tracks the number of times the coupon has been used
         public int TimesUsed { get; set; } = 0;
-
-        // Constructor
-        public Coupon()
-        {
-            
-        }
 
         // Function to check if the coupon is still valid - True if valid, False if expired
         public bool IsValid()

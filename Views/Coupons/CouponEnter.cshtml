@@ -1,24 +1,24 @@
-﻿
-<h4>Enter Coupon</h4>
+﻿<h4>Coupon Enter</h4>
 <hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="ShowPriceAfterCut">
-            <div class="form-group">
-                <label for="CouponPhrase" class="control-label"></label>
-                <input name="CouponPhrase" class="form-control" />
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Enter" class="btn btn-primary" />
-            </div>
-        </form>
+
+<form asp-action="ShowPriceAfterCut" method="post">
+    <div class="form-group">
+        <p>Original Price: 100</p>
+        <p>Discounted Price: @ViewBag.DiscountedPrice</p>
     </div>
-</div>
+    <div class="form-group">
+        <label for="CouponPhrase">Coupon Code:</label>
+        <input type="text" id="CouponPhrase" name="CouponPhrase" class="form-control" />
+    </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
+    <div class="form-group">
+        <input type="submit" value="Apply Coupon" class="btn btn-primary" />
+    </div>
+</form>
 
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+@if (ViewBag.DiscountedPrice != null)
+{
+    <div class="alert alert-success">
+        <strong>Discounted Price: </strong>@ViewBag.DiscountedPrice
+    </div>
 }

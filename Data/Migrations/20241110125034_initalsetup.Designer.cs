@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CouponCodes.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241110094950_initalsetup")]
+    [Migration("20241110125034_initalsetup")]
     partial class initalsetup
     {
         /// <inheritdoc />
@@ -33,8 +33,9 @@ namespace CouponCodes.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CodeCoupon")
-                        .HasColumnType("int");
+                    b.Property<string>("CodeCoupon")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreationDateAndTime")
                         .HasColumnType("datetime2");
@@ -46,8 +47,9 @@ namespace CouponCodes.Data.Migrations
                     b.Property<decimal>("DiscountAmount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<float>("DiscountPercentage")
-                        .HasColumnType("real");
+                    b.Property<string>("DiscountValue")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("ExpirationDate")
                         .HasColumnType("datetime2");
