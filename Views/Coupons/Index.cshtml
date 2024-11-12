@@ -70,10 +70,10 @@
                 @Html.DisplayFor(modelItem => item.IsStackable)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.UsageLimit)
+                @Html.DisplayFor(modelItem => item.TimesUsed)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.TimesUsed)
+                @Html.DisplayFor(modelItem => item.UsageLimit)
             </td>
             <td>
                 <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |

@@ -1,11 +1,15 @@
-﻿using CouponCodes.Data;
+﻿using ClosedXML.Excel;
+using CouponCodes.Data;
 using CouponCodes.Models;
+using DocumentFormat.OpenXml.InkML;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using OfficeOpenXml;
 using System.ComponentModel.DataAnnotations;
+using System.Data;
 
 namespace CouponCodes.Controllers
 {
@@ -17,6 +21,8 @@ namespace CouponCodes.Controllers
         // Static variable to hold the final price between requests
         private static decimal finalPrice = 100m;
 
+        private static bool CheckIfDoubleDealAllow = true;
+
 
         public CouponsController(UserManager<IdentityUser> userManager, ApplicationDbContext context)
         {
@@ -24,16 +30,7 @@ namespace CouponCodes.Controllers
             _context = context;
         }
 
-        // View function
-        // GET: Coupons/Index go to this page and show all the copouns
-        // Only admin can see the coupons and create/delete and etc
-        [Authorize(Roles = "Admin")]
-        public IActionResult Index()
-        {
-            // Display all coupons
-            var coupons = _context.Coupon.ToList();
-            return View(coupons);
-        }
+        // ********************************** EnterCoupons system Functions ************************************
 
         // View Function
         // GET: Coupons/CouponEnter
@@ -58,51 +55,66 @@ namespace CouponCodes.Controllers
 
             if (coupon != null)
             {
-                // Checking valid date and Usage of coupon
-                if (coupon.IsDateValid() && coupon.IsUsageValid())
+                // Checking if allow double deal
+                if (CheckIfDoubleDealAllow)
                 {
-                    // Check if the discount is a percentage
-                    if (coupon.DiscountValue.Contains("%"))
+                    // Checking if coupon non stackable
+                    if (!coupon.IsStackable)
                     {
-                        var percentage = coupon.DiscountValue.Replace("%", "").Trim();
-                        if (decimal.TryParse(percentage, out var parsedPercentage) && parsedPercentage >= 0 && parsedPercentage <= 100)
-                        {
-                            currentPrice -= currentPrice * (parsedPercentage / 100);
-                        }
+                        // If true, make CheckIfDoubleDealAllow to false to prevent from the next coupons to work
+                        CheckIfDoubleDealAllow = false;
                     }
-                    else // Discount is a fixed amount
+
+                    // Checking valid date and Usage of coupon
+                    if (coupon.IsDateValid() && coupon.IsUsageValid())
                     {
-                        if (decimal.TryParse(coupon.DiscountValue, out var parsedFixed))
+                        // Check if the discount is a percentage
+                        if (coupon.DiscountValue.Contains("%"))
                         {
-                            currentPrice -= parsedFixed;
-                            if (currentPrice < 0)
+                            var percentage = coupon.DiscountValue.Replace("%", "").Trim();
+                            if (decimal.TryParse(percentage, out var parsedPercentage) && parsedPercentage >= 0 && parsedPercentage <= 100)
                             {
-                                ModelState.AddModelError("", "Price is 0, cant go any lower!.");
-                                return BadRequest(ModelState); // HTTP 400
+                                currentPrice -= currentPrice * (parsedPercentage / 100);
                             }
                         }
+                        else // Discount is a fixed amount
+                        {
+                            if (decimal.TryParse(coupon.DiscountValue, out var parsedFixed))
+                            {
+                                currentPrice -= parsedFixed;
+                                if (currentPrice < 0)
+                                {
+                                    ModelState.AddModelError("", "Price is 0, cant go any lower!.");
+                                    return BadRequest(ModelState); // HTTP 400
+                                }
+                            }
+                        }
+
+                        // Ensure final price doesn’t go below zero
+                        currentPrice = Math.Max(currentPrice, 0);
+
+
+                        // Increment the coupon's TimesUsed count
+                        coupon.TimesUsed += 1;
+
+                        // Save the updated coupon data to the database
+                        _context.Update(coupon);
+                        _context.SaveChanges();
                     }
-
-                    // Ensure final price doesn’t go below zero
-                    currentPrice = Math.Max(currentPrice, 0);
-
-
-                    // Increment the coupon's TimesUsed count
-                    coupon.TimesUsed += 1;
-
-                    // Save the updated coupon data to the database
-                    _context.Update(coupon);
-                    _context.SaveChanges();
+                    else if(!coupon.IsDateValid()) // Coupon is expired
+                    {
+                        ModelState.AddModelError("", "This coupon has expired.");
+                        return StatusCode(410, ModelState); // HTTP 410 Gone
+                    }
+                    else // Coupon usage limit has been reached
+                    {
+                        ModelState.AddModelError("", "This coupon usage limit has been reached.");
+                        return StatusCode(403, ModelState); // HTTP 403 Forbidden
+                    }
                 }
-                else if(!coupon.IsDateValid()) // Coupon is expired
+                else // Last coupon was non stackable
                 {
-                    ModelState.AddModelError("", "This coupon has expired.");
-                    return StatusCode(410, ModelState); // HTTP 410 Gone
-                }
-                else // Coupon usage limit has been reached
-                {
-                    ModelState.AddModelError("", "This coupon usage limit has been reached.");
-                    return StatusCode(403, ModelState); // HTTP 403 Forbidden
+                    ModelState.AddModelError("", "A non-stackable coupon has already been applied. No further discounts are allowed.");
                 }
             }
             else  // Coupon not found in the database
@@ -120,6 +132,21 @@ namespace CouponCodes.Controllers
             // Return to the "CouponEnter" view
             return View("CouponEnter");
         }
+
+
+        // *********************************** Coupons system Functions *************************************
+
+        // View function
+        // GET: Coupons/Index go to this page and show all the copouns
+        // Only admin can see the coupons and create/delete and etc
+        [Authorize(Roles = "Admin")]
+        public IActionResult Index()
+        {
+            // Display all coupons
+            var coupons = _context.Coupon.ToList();
+            return View(coupons);
+        }
+
 
         //View function
         // GET: Display form to create a new coupon
@@ -227,10 +254,11 @@ namespace CouponCodes.Controllers
             return RedirectToAction("Index");
         }
 
-        // Reports system
+        // *********************************** Reports system functions *************************************
 
         // View Function
-        // GET: Coupons/CouponEnter
+        // GET: Coupons/CouponsReport
+        [Authorize(Roles = "Admin")]
         public IActionResult CouponsReport()
         {
             var coupons = _context.Coupon.ToList();
@@ -241,6 +269,7 @@ namespace CouponCodes.Controllers
         public IActionResult FilterCouponsByUser(string userId)
         {
             var coupons = _context.Coupon.Where(c => c.UserId == userId).ToList();
+            TempData["FilteredCoupons"] = JsonConvert.SerializeObject(coupons); // Store filtered data for the excel
             return View("CouponsReport", coupons);
         }
 
@@ -248,7 +277,79 @@ namespace CouponCodes.Controllers
         public IActionResult FilterCouponsByDate(DateTime startDate, DateTime endDate)
         {
             var coupons = _context.Coupon.Where( c => c.CreationDateAndTime >= startDate && c.CreationDateAndTime <= endDate ).ToList();
+            // Store filtered data for the excel (convert from .net object to string)
+            TempData["FilteredCoupons"] = JsonConvert.SerializeObject(coupons); 
             return View("CouponsReport",coupons);
+        }
+
+        // Generate coupons excel (through ClosedXML Package)
+        [HttpGet]
+        public async Task<FileResult> ExportCouponsInExcel()
+        {
+            List<Coupon> coupons;
+
+            // Get filtered data from TempData if available
+            if (TempData["FilteredCoupons"] != null)
+            {
+                // get filter coupons (convert back from json to list object)
+                coupons = JsonConvert.DeserializeObject<List<Coupon>>(TempData["FilteredCoupons"].ToString());
+            }
+            else
+            {
+                coupons = _context.Coupon.ToList(); // Default to full list if no filter applied
+            }
+
+            var fileName = "Coupons.xlsx";
+            return GenerateExcel(fileName, coupons);
+        }
+
+        private FileResult GenerateExcel(string fileName, IEnumerable<Coupon> coupons)
+        {
+            DataTable dataTable = new DataTable("Coupons");
+            dataTable.Columns.AddRange(new DataColumn[]
+            {
+                new DataColumn("Id"),
+                new DataColumn("CodeCoupon"),
+                new DataColumn("Description"),
+                new DataColumn("UserId"),
+                new DataColumn("CreationDateAndTime"),
+                new DataColumn("DiscountValue"),
+                new DataColumn("ExpirationDate"),
+                new DataColumn("IsStackable"),
+                new DataColumn("TimesUsed"),
+                new DataColumn("UsageLimit"),
+            });
+
+            foreach (var coupon in coupons)
+            {
+                dataTable.Rows.Add(
+                    coupon.Id,
+                    coupon.CodeCoupon,
+                    coupon.Description,
+                    coupon.UserId,
+                    coupon.CreationDateAndTime,
+                    coupon.DiscountValue,
+                    coupon.ExpirationDate,
+                    coupon.IsStackable,
+                    coupon.TimesUsed,
+                    coupon.UsageLimit
+                    );
+            }
+
+            // Scope for create the excel
+            using (XLWorkbook wb = new XLWorkbook())
+            {
+                wb.Worksheets.Add(dataTable);
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    wb.SaveAs(stream);
+
+                    return File(stream.ToArray(),
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        fileName);
+                }
+            }
+
         }
 
     }
