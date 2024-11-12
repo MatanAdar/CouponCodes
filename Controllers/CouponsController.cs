@@ -23,6 +23,7 @@ namespace CouponCodes.Controllers
             _context = context;
         }
 
+        // GET: Coupons/Index go to this page and show all the copouns
         // Only admin can see the coupons and create/delete and etc
         [Authorize(Roles = "Admin")]
         public IActionResult Index()
@@ -44,7 +45,7 @@ namespace CouponCodes.Controllers
         {
             decimal baseOrderPrice = 100m;  // The fixed order price
 
-            // If static finalPrice has already been set, use that as the base price
+            // Get the current price after the latest discount
             decimal currentPrice = finalPrice;
 
             // Find the coupon in the database using the provided code
@@ -52,37 +53,59 @@ namespace CouponCodes.Controllers
 
             if (coupon != null)
             {
-                if (coupon.DiscountValue.Contains("%")) // Checking if discount input is percentage
+                // Now we can safely check if the coupon is valid
+                if (coupon.IsDateValid() && coupon.IsUsageValid())
                 {
-                    var percentage = coupon.DiscountValue.Replace("%", "").Trim();
-                    if (decimal.TryParse(percentage, out var parsedPercentage))
+                    // Check if the discount is a percentage
+                    if (coupon.DiscountValue.Contains("%"))
                     {
-                        if (parsedPercentage >= 0 && parsedPercentage <= 100)
+                        var percentage = coupon.DiscountValue.Replace("%", "").Trim();
+                        if (decimal.TryParse(percentage, out var parsedPercentage) && parsedPercentage >= 0 && parsedPercentage <= 100)
                         {
-                            // Apply discount percentage based on the latest final price (static finalPrice)
                             currentPrice -= currentPrice * (parsedPercentage / 100);
                         }
                     }
-                }
-                else // Discount input is fixed price
-                {
-                    var parsedFixed = decimal.Parse(coupon.DiscountValue);
-                    currentPrice -= parsedFixed;
-                }
+                    else // Discount is a fixed amount
+                    {
+                        if (decimal.TryParse(coupon.DiscountValue, out var parsedFixed))
+                        {
+                            currentPrice -= parsedFixed;
+                        }
+                    }
 
-                // Make sure the final price doesn’t go below zero
-                currentPrice = Math.Max(currentPrice, 0);
+                    // Ensure final price doesn’t go below zero
+                    currentPrice = Math.Max(currentPrice, 0);
+
+                    if(currentPrice <= 0)
+                    {
+                        ModelState.AddModelError("", "Price is 0, cant go any lower!.");
+                    }
+
+                    // Increment the coupon's TimesUsed count
+                    coupon.TimesUsed += 1;
+
+                    // Save the updated coupon data to the database
+                    _context.Update(coupon);
+                    _context.SaveChanges();
+                }
+                else if(!coupon.IsDateValid()) // Coupon is expired
+                {
+                    ModelState.AddModelError("", "This coupon has expired.");
+                }
+                else // Coupon usage limit has been reached
+                {
+                    ModelState.AddModelError("", "This coupon usage limit has been reached.");
+                }
             }
-            else // Coupon not found in the database
+            else  // Coupon not found in the database
             {
                 ModelState.AddModelError("", "Invalid coupon code.");
-                currentPrice = baseOrderPrice;  // Reset to base price
             }
 
             // Update the static finalPrice variable
             finalPrice = currentPrice;
 
-            // Pass the final price and coupon status to the view
+            // Pass the final price to the view
             ViewBag.DiscountedPrice = currentPrice;
 
             // Return to the "CouponEnter" view
@@ -90,19 +113,26 @@ namespace CouponCodes.Controllers
         }
 
         // Display form to create a new coupon
+        // Only admin can do this (beacuse only admin can enter to the coupons page)
         public IActionResult Create()
         {
             return View();
         }
 
         // POST: Create a new coupon
+        // Only admin can do this (beacuse only admin can enter to the coupons page)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Create(Coupon coupon)
         {
             if (ModelState.IsValid)
             {
-              
+                // Set UsageLimit to null if it's not provided
+                if (coupon.UsageLimit == null)
+                {
+                    coupon.UsageLimit = null; // Or set to a default value if needed
+                }
+
                 // Add the coupon to the database
                 _context.Coupon.Add(coupon);
                 _context.SaveChangesAsync();
@@ -114,7 +144,20 @@ namespace CouponCodes.Controllers
             return View(coupon);
         }
 
+        // Display existing form details of the coupon
+        // Only admin can do this (beacuse only admin can enter to the coupons page)
+        public IActionResult Details(int id)
+        {
+            var coupon = _context.Coupon.Find(id);
+            if (coupon == null)
+            {
+                return NotFound();
+            }
+            return View(coupon);
+        }
+
         // Display existing form to edit the coupon
+        // Only admin can do this (beacuse only admin can enter to the coupons page)
         public IActionResult Edit(int id)
         {
             var coupon = _context.Coupon.Find(id);
@@ -126,6 +169,7 @@ namespace CouponCodes.Controllers
         }
 
         // POST: Edit an existing coupon
+        // Only admin can do this (beacuse only admin can enter to the coupons page)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Edit(int id, Coupon coupon)
@@ -140,6 +184,7 @@ namespace CouponCodes.Controllers
         }
 
         // Display confirmation page to delete a coupon
+        // Only admin can do this (beacuse only admin can enter to the coupons page)
         public IActionResult Delete(int id)
         {
             var coupon = _context.Coupon.Find(id);
@@ -151,6 +196,7 @@ namespace CouponCodes.Controllers
         }
 
         // POST: Delete a coupon
+        // Only admin can do this (beacuse only admin can enter to the coupons page)
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public IActionResult DeleteConfirmed(int id)
@@ -165,3 +211,4 @@ namespace CouponCodes.Controllers
         }
     }
 }
+

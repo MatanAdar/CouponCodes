@@ -39,7 +39,7 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Coupons}/{action=CouponEnter}/{id?}");
 app.MapRazorPages();
 
 // scope to enable services we write earlier

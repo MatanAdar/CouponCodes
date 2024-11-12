@@ -1,13 +1,14 @@
-﻿@model IEnumerable<CouponCodes.Models.Coupon>
+﻿@using System.Security.Claims
+@model IEnumerable<CouponCodes.Models.Coupon>
 
 @{
     ViewData["Title"] = "Index";
 }
 
-<h1 class="text-center">Admin Coupons</h1>
+<h1>Coupons</h1>
 
-<p class="text-center">
-    <a asp-action="Create">Create New</a>
+<p>
+    <a asp-action="Create">Create New Coupon</a>
 </p>
 <table class="table">
     <thead>
@@ -15,17 +16,30 @@
             <th>
                 @Html.DisplayNameFor(model => model.CodeCoupon)
             </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Description)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.DiscountValue)
-            </th>
+            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+            {
+                <th>@Html.DisplayNameFor(model => model.Description)</th>
+            }
             <th>
                 @Html.DisplayNameFor(model => model.UserId)
             </th>
             <th>
                 @Html.DisplayNameFor(model => model.CreationDateAndTime)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.DiscountValue)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ExpirationDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.IsStackable)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.UsageLimit)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.TimesUsed)
             </th>
             <th></th>
         </tr>
@@ -36,17 +50,30 @@
             <td>
                 @Html.DisplayFor(modelItem => item.CodeCoupon)
             </td>
+            @if (User.IsInRole("Admin") || User.IsInRole("Manager")) // Only admin and managers can see the description of the coupon
+            {
+                <td>@Html.DisplayFor(modelItem => item.Description)</td>
+            }
+            <td> 
+                 @User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) @* Give userId becuase have table with userId as string *@
+            </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Description)
+                @Html.DisplayFor(modelItem => item.CreationDateAndTime)
             </td>
             <td>
                 @Html.DisplayFor(modelItem => item.DiscountValue)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.UserId)
+                @Html.DisplayFor(modelItem => item.ExpirationDate)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.CreationDateAndTime)
+                @Html.DisplayFor(modelItem => item.IsStackable)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.UsageLimit)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.TimesUsed)
             </td>
             <td>
                 <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |

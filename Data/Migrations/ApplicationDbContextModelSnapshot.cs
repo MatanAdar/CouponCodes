@@ -54,7 +54,7 @@ namespace CouponCodes.Data.Migrations
                     b.Property<int>("TimesUsed")
                         .HasColumnType("int");
 
-                    b.Property<int>("UsageLimit")
+                    b.Property<int?>("UsageLimit")
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")

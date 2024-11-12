@@ -32,20 +32,25 @@ namespace CouponCodes.Models
         // Expiration date, if applicable (Null if no expiration)
         public DateTime? ExpirationDate { get; set; }
 
-        // Flag indicating if the coupon can be stacked with other discounts
+        // Flag indicating if the coupon can be stacked with other coupons discount
         public bool IsStackable { get; set; }
 
         // Maximum number of times the coupon can be used
-        public int UsageLimit { get; set; }
+        public int? UsageLimit { get; set; }
 
         // Tracks the number of times the coupon has been used
         public int TimesUsed { get; set; } = 0;
 
-        // Function to check if the coupon is still valid - True if valid, False if expired
-        public bool IsValid()
+        // Check if the coupon is still valid - True if valid, False if expired
+        public bool IsDateValid()
         {
-            return (!ExpirationDate.HasValue || ExpirationDate > DateTime.Now) &&
-                   (UsageLimit == 0 || TimesUsed < UsageLimit);
+            return (!ExpirationDate.HasValue || ExpirationDate > DateTime.Now);
+        }
+
+        // Check if the coupon is still valid - True if valid, False if surpass the usage limit he have
+        public bool IsUsageValid()
+        {
+            return UsageLimit == null || TimesUsed < UsageLimit;
         }
     }
 }
