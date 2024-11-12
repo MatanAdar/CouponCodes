@@ -1,15 +1,23 @@
-﻿@using System.Security.Claims
-@model IEnumerable<CouponCodes.Models.Coupon>
+﻿@model IEnumerable<CouponCodes.Models.Coupon>
+@using System.Security.Claims
 
-@{
-    ViewData["Title"] = "Index";
-}
+<h4>Reports</h4>
+<hr />
 
-<h1>Coupons</h1>
+<form asp-action="FilterCouponsByDate" method="post">
+    <label for="startDate">Start Date:</label>
+    <input type="date" id="startDate" name="startDate" />
+    <label for="endDate">End Date:</label>
+    <input type="date" id="endDate" name="endDate" />
+    <button type="submit">Filter by Date</button>
+</form>
 
-<p>
-    <a asp-action="Create">Create New Coupon</a>
-</p>
+<form asp-action="FilterCouponsByUser" method="post">
+    <label for="userId">User ID(email):</label>
+    <input type="email" id="userId" name="userId" />
+    <button type="submit">Filter by User</button>
+</form>
+
 <table class="table">
     <thead>
         <tr>
@@ -45,7 +53,7 @@
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
+    @foreach (var item in Model) {
         <tr>
             <td>
                 @Html.DisplayFor(modelItem => item.CodeCoupon)
@@ -75,12 +83,7 @@
             <td>
                 @Html.DisplayFor(modelItem => item.TimesUsed)
             </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
         </tr>
-}
+    }
     </tbody>
 </table>

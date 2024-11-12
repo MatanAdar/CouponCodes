@@ -1,7 +1,8 @@
 ﻿using CouponCodes.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using CouponCodes.Models; // Adjust according to your models' namespace
+using CouponCodes.Models;
+using Microsoft.AspNetCore.Authorization; // Adjust according to your models' namespace
 
 // This Controller created to controller over the register data (email,password) and give it a admin role
 namespace CouponCodes.Controllers
@@ -27,6 +28,7 @@ namespace CouponCodes.Controllers
         }
 
         // Post registration form
+        [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModel model)

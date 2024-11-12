@@ -57,8 +57,8 @@ namespace CouponCodes.Data.Migrations
                     b.Property<int?>("UsageLimit")
                         .HasColumnType("int");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

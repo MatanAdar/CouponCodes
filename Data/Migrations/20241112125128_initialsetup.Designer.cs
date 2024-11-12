@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CouponCodes.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241111141853_initialsetup")]
+    [Migration("20241112125128_initialsetup")]
     partial class initialsetup
     {
         /// <inheritdoc />
@@ -60,8 +60,8 @@ namespace CouponCodes.Data.Migrations
                     b.Property<int?>("UsageLimit")
                         .HasColumnType("int");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

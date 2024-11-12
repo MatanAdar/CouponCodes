@@ -42,25 +42,8 @@ app.MapControllerRoute(
     pattern: "{controller=Coupons}/{action=CouponEnter}/{id?}");
 app.MapRazorPages();
 
-// scope to enable services we write earlier
-using(var scope = app.Services.CreateScope())
-{
-    // Get the require service that we need, in this case the roles
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    var roles = new[] { "Admin", "Manager", "Member" };
-
-    foreach(var role in roles)
-    {
-        // check if a role with this string exist
-        if(!await roleManager.RoleExistsAsync(role))
-        {
-            await roleManager.CreateAsync(new IdentityRole(role));
-        }
-    }
-}
-
-// scope to enable services we write earlier and assain a admin account
+// scope to create the first admin account
 using (var scope = app.Services.CreateScope())
 {
     // Get the require service that we need for the users
@@ -78,8 +61,6 @@ using (var scope = app.Services.CreateScope())
         user.Email = email;
 
         await userManager.CreateAsync(user,password);
-
-        await userManager.AddToRoleAsync(user, "Admin");
     }
     
 }

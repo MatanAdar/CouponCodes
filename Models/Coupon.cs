@@ -9,6 +9,7 @@ namespace CouponCodes.Models
         {
 
         }
+        [Key]
         public int Id { get; set; }
 
         // Unique coupon code used for discount
@@ -18,7 +19,7 @@ namespace CouponCodes.Models
         public string Description { get; set; }
 
         // ID of the user who created the coupon
-        public int UserId { get; set; }
+        public string? UserId { get; set; }
 
         // The date and time when the coupon was created, automatically set to Now upon creation
         public DateTime CreationDateAndTime { get; set; } = DateTime.Now;
