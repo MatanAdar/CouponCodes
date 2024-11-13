@@ -2,12 +2,10 @@
 using CouponCodes.Data;
 using CouponCodes.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using System.ComponentModel.DataAnnotations;
+using Newtonsoft.Json.Converters;
 using System.Data;
 
 namespace CouponCodes.Controllers
@@ -15,7 +13,7 @@ namespace CouponCodes.Controllers
     public class CouponsController : Controller
     {
         private readonly UserManager<IdentityUser> _userManager;
-        private readonly ApplicationDbContext _context;
+        private readonly DataContext _context;
 
         // Static variable to hold the final price between requests
         private static decimal finalPrice = 100m;
@@ -23,29 +21,27 @@ namespace CouponCodes.Controllers
         private static bool CheckIfDoubleDealAllow = true;
 
 
-        public CouponsController(UserManager<IdentityUser> userManager, ApplicationDbContext context)
+        public CouponsController(UserManager<IdentityUser> userManager, DataContext context)
         {
             _userManager = userManager;
             _context = context;
         }
 
-        // ********************************** EnterCoupons system Functions ************************************
+		// ********************************** EnterCoupons system Functions ************************************
 
-        // View Function
-        // GET: Coupons/CouponEnter
-        public IActionResult CouponEnter()
+		// View Function
+		// GET: Coupons/CouponEnter
+		public IActionResult CouponEnter()
         {
             return View();
         }
 
 
-        // POST: Handle coupon enter input and reduce the discount from the latest price
-        // Function to make the parse to the discount value (precentege or fixed) and lower it from our price
-        [HttpPost]
-        public IActionResult ShowPriceAfterCut(string CouponPhrase)
+		// POST: Handle coupon enter input and reduce the discount from the latest price
+		// Function to make the parse to the discount value (precentege or fixed) and lower it from our price
+		[HttpPost("ShowPriceAfterCut")]
+		public IActionResult ShowPriceAfterCut(string CouponPhrase)
         {
-            decimal baseOrderPrice = 100m;  // The fixed order price
-
             // Get the current price after the latest discount
             decimal currentPrice = finalPrice;
 
@@ -114,6 +110,7 @@ namespace CouponCodes.Controllers
                 else // Last coupon was non stackable
                 {
                     ModelState.AddModelError("", "A non-stackable coupon has already been applied. No further discounts are allowed.");
+                    return BadRequest(ModelState);
                 }
             }
             else  // Coupon not found in the database
@@ -129,8 +126,9 @@ namespace CouponCodes.Controllers
             ViewBag.DiscountedPrice = currentPrice;
 
             // Return to the "CouponEnter" view
-            return View("CouponEnter");
-        }
+            return Ok(new { DiscountedPrice = currentPrice });
+			/*return View("CouponEnter");*/
+		}
 
 
         // *********************************** Coupons system Functions *************************************
@@ -139,12 +137,14 @@ namespace CouponCodes.Controllers
         // GET: Coupons/Index go to this page and show all the copouns
         // Only admin can see the coupons and create/delete and etc
         [Authorize]
+        [HttpGet("CouponsList")]
         public IActionResult Index()
         {
             // Display all coupons
             var coupons = _context.Coupon.ToList();
-            return View(coupons);
-        }
+            return Ok(coupons);
+			/*return View(coupons);*/
+		}
 
 
         //View function
@@ -157,9 +157,10 @@ namespace CouponCodes.Controllers
 
         // POST: Create a new coupon (Excute the command)
         // Only admin can do this (beacuse only admin can enter to the coupons page)
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Coupon coupon)
+        [HttpPost("CreateCoupon")]
+        [Authorize]
+        //[ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([FromBody] Coupon coupon)
         {
             if (ModelState.IsValid)
             {
@@ -167,21 +168,27 @@ namespace CouponCodes.Controllers
 				// Check if the coupon code already exists in the database
 				var existingCoupon =  _context.Coupon.Any(c => c.CodeCoupon == coupon.CodeCoupon);
 
-				if (existingCoupon != null)
+				if (existingCoupon)
 				{
-					// If the coupon code already exists, add an error to the model state
-					ModelState.AddModelError("CodeCoupon", "This coupon code already exists. Choose another one");
-					return View(coupon); // Return the view with the error
+                    // If the coupon code already exists, add an error to the model state
+                    ModelState.AddModelError("CodeCoupon", "This coupon code already exists. Choose another one");
+                    return BadRequest("This coupon code already exists.Choose another one");
+					/*return View(coupon); // Return the view with the error*/
 				}
 
-				// Fetch user data
-				// We have UserId header in the database(Generate when created account),
-				// but i want that the coupon userId will be the email of the account that made the coupon becuase its unique
-				// and when filter by userId in the reports we can enter something easier like email and not generated userId
-				var user = await _userManager.GetUserAsync(User);
+                // Fetch user data
+                // We have UserId header in the database(Generate when created account),
+                // but i want that the coupon userId will be the email of the account that made the coupon becuase its unique
+                // and when filter by userId in the reports we can enter something easier like email and not generated userId
+                var user = await _userManager.GetUserAsync(User);
                 if(user != null)
                 {
                     coupon.UserId = user.Email;
+                }
+
+                if (coupon.UsageLimit == 0)
+                {
+                    coupon.UsageLimit = null;
                 }
 
                 /*// Fetch userId the user who create the coupon (decided to use email and not userId)
@@ -195,52 +202,63 @@ namespace CouponCodes.Controllers
                 _context.Coupon.Add(coupon);
                 await _context.SaveChangesAsync();
 
-                return RedirectToAction("Index");
+                return Ok("Coupon created Successfully");
+                /*return RedirectToAction("Index");*/
             }
 
-            // If the model state is invalid, return the same view with the coupon object
-            return View(coupon);
-        }
+			// If the model state is invalid, return the same view with the coupon object
+			return BadRequest(ModelState);
+			//return View(coupon);
+		}
 
         //View function
         // GET: Display existing form details of the coupon
         // Only admin can do this (beacuse only admin can enter to the coupons page)
+        [HttpGet("GetCouponDetails")]
+        [Authorize]
         public IActionResult Details(int id)
         {
             var coupon = _context.Coupon.Find(id);
             if (coupon == null)
             {
-                return NotFound();
+                return NotFound("Coupon not found!");
             }
-            return View(coupon);
+
+            return Ok(coupon);
+            /*return View(coupon);*/
         }
 
         //View function
         // GET: Display existing form to edit the coupon
         // Only admin can do this (beacuse only admin can enter to the coupons page)
+        [Authorize]
         public IActionResult Edit(int id)
         {
             var coupon = _context.Coupon.Find(id);
             if (coupon == null)
             {
-                return NotFound();
+                return NotFound("Coupon not found!");
             }
-            return View(coupon);
+            return Ok(coupon);
+            /*return View(coupon);*/
         }
 
         // POST: Edit an existing coupon (Excute the command)
         // Only admin can do this (beacuse only admin can enter to the coupons page)
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        [HttpPost("EditCoupon")]
+        [Authorize]
+        /*[ValidateAntiForgeryToken]*/
         public IActionResult Edit(int id, Coupon coupon)
         {
             if (ModelState.IsValid)
             {
                 _context.Coupon.Update(coupon);
                 _context.SaveChanges();
-                return RedirectToAction("Index");
+                return Ok(coupon);
+                /*return RedirectToAction("Index");*/
             }
-            return View(coupon);
+            return BadRequest("Invalid coupon data.");
+            /* return View(coupon);*/
         }
 
         //View function
@@ -253,13 +271,15 @@ namespace CouponCodes.Controllers
             {
                 return NotFound();
             }
-            return View(coupon);
+            return Ok(coupon);
+            /*return View(coupon);*/
         }
 
         // POST: Delete a coupon(Excute the command)
         // Only admin can do this (beacuse only admin can enter to the coupons page)
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
+        [HttpPost("DeleteCoupon"), ActionName("Delete")]
+        [Authorize]
+        /*[ValidateAntiForgeryToken]*/
         public IActionResult DeleteConfirmed(int id)
         {
             var coupon = _context.Coupon.Find(id);
@@ -268,7 +288,8 @@ namespace CouponCodes.Controllers
                 _context.Coupon.Remove(coupon);
                 _context.SaveChanges();
             }
-            return RedirectToAction("Index");
+            return Ok("Deleted Successfully");
+            /*return RedirectToAction("Index");*/
         }
 
         // *********************************** Reports system functions *************************************
@@ -283,24 +304,38 @@ namespace CouponCodes.Controllers
         }
 
         // Function that filter coupons by UserId
+        [HttpPost("CouponsByUser")]
         public IActionResult FilterCouponsByUser(string userId)
         {
             var coupons = _context.Coupon.Where(c => c.UserId == userId).ToList();
             TempData["FilteredCoupons"] = JsonConvert.SerializeObject(coupons); // Store filtered data for the excel
-            return View("CouponsReport", coupons);
+            return Ok(coupons);
+            /*return View("CouponsReport", coupons);*/
+        }
+
+        // Create a class to handle the DateRange input
+        public class DateRangeRequest
+        {
+            [JsonConverter(typeof(IsoDateTimeConverter))]
+            public DateTime StartDate { get; set; }
+
+            [JsonConverter(typeof(IsoDateTimeConverter))]
+            public DateTime EndDate { get; set; }
         }
 
         // Function that filter coupons by Date
-        public IActionResult FilterCouponsByDate(DateTime startDate, DateTime endDate)
+        [HttpPost("CouponsByDate")]
+        public IActionResult FilterCouponsByDate([FromBody] DateRangeRequest dateRange)
         {
-            var coupons = _context.Coupon.Where( c => c.CreationDateAndTime >= startDate && c.CreationDateAndTime <= endDate ).ToList();
+            var coupons = _context.Coupon.Where(c => c.CreationDateAndTime >= dateRange.StartDate && c.CreationDateAndTime <= dateRange.EndDate).ToList();
             // Store filtered data for the excel (convert from .net object to string)
-            TempData["FilteredCoupons"] = JsonConvert.SerializeObject(coupons); 
-            return View("CouponsReport",coupons);
+            TempData["FilteredCoupons"] = JsonConvert.SerializeObject(coupons);
+            return Ok(coupons);
+            /*return View("CouponsReport",coupons);*/
         }
 
         // Generate coupons excel (through ClosedXML Package)
-        [HttpGet]
+        [HttpGet("GenerateToExcel")]
         public async Task<FileResult> ExportCouponsInExcel()
         {
             List<Coupon> coupons;

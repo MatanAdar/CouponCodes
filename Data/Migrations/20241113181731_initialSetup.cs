@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CouponCodes.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class initialsetup : Migration
+    public partial class initialSetup : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -24,8 +24,8 @@ namespace CouponCodes.Data.Migrations
                     DiscountValue = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ExpirationDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     IsStackable = table.Column<bool>(type: "bit", nullable: false),
-                    UsageLimit = table.Column<int>(type: "int", nullable: true),
-                    TimesUsed = table.Column<int>(type: "int", nullable: false)
+                    TimesUsed = table.Column<int>(type: "int", nullable: false),
+                    UsageLimit = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {

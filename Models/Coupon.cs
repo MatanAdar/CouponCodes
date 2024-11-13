@@ -15,11 +15,13 @@ namespace CouponCodes.Models
 
 
         // Unique coupon code used for discount
+        [Required]
         public string CodeCoupon { get; set; }
 
 
-        // Description of the coupon, visible to admins only
-        public string Description { get; set; }
+		// Description of the coupon, visible to admins only
+		[Required]
+		public string Description { get; set; }
 
 
         // ID of the user who created the coupon
@@ -34,7 +36,8 @@ namespace CouponCodes.Models
         //Make a validation to the input that not go under 0 or above 100 and only get number, %
         [RegularExpression(@"^(\d+(\.\d{1,2})?%?)$", ErrorMessage = "Please enter a valid discount value (e.g., 20 or 20%).")]
         [ValidDiscountValueAttribute(ErrorMessage = "Discount value must be between 0 and 100, either as an amount or percentage.")]
-        public string DiscountValue { get; set; }
+		[Required]
+		public string DiscountValue { get; set; }
 
 
         // Expiration date, if applicable (Null if no expiration)
