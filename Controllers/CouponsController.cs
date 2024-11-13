@@ -1,13 +1,12 @@
 ﻿using ClosedXML.Excel;
 using CouponCodes.Data;
 using CouponCodes.Models;
-using DocumentFormat.OpenXml.InkML;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using OfficeOpenXml;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 
@@ -165,11 +164,21 @@ namespace CouponCodes.Controllers
             if (ModelState.IsValid)
             {
 
-                // Fetch user data
-                // We have UserId header in the database(Generate when created account),
-                // but i want that the coupon userId will be the email of the account that made the coupon becuase its unique
-                // and when filter by userId in the reports we can enter something easier like email and not generated userId
-                var user = await _userManager.GetUserAsync(User);
+				// Check if the coupon code already exists in the database
+				var existingCoupon =  _context.Coupon.Any(c => c.CodeCoupon == coupon.CodeCoupon);
+
+				if (existingCoupon != null)
+				{
+					// If the coupon code already exists, add an error to the model state
+					ModelState.AddModelError("CodeCoupon", "This coupon code already exists. Choose another one");
+					return View(coupon); // Return the view with the error
+				}
+
+				// Fetch user data
+				// We have UserId header in the database(Generate when created account),
+				// but i want that the coupon userId will be the email of the account that made the coupon becuase its unique
+				// and when filter by userId in the reports we can enter something easier like email and not generated userId
+				var user = await _userManager.GetUserAsync(User);
                 if(user != null)
                 {
                     coupon.UserId = user.Email;
