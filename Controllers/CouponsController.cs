@@ -18,6 +18,7 @@ namespace CouponCodes.Controllers
         // Static variable to hold the final price between requests
         private static decimal finalPrice = 100m;
 
+        // Static variable to check stackable (double deals)
         private static bool CheckIfDoubleDealAllow = true;
 
 
@@ -42,7 +43,7 @@ namespace CouponCodes.Controllers
 		[HttpPost("ShowPriceAfterCut")]
 		public IActionResult ShowPriceAfterCut(string CouponPhrase)
         {
-            // Get the current price after the latest discount
+            // Get the current price after the latest discount (finalPrice is global static variable)
             decimal currentPrice = finalPrice;
 
             // Find the coupon in the database using the provided code
@@ -99,7 +100,7 @@ namespace CouponCodes.Controllers
                     else if(!coupon.IsDateValid()) // Coupon is expired
                     {
                         ModelState.AddModelError("", "This coupon has expired.");
-                        return StatusCode(410, ModelState); // HTTP 410 Gone
+                        return BadRequest(ModelState); // HTTP 400
                     }
                     else // Coupon usage limit has been reached
                     {
@@ -107,7 +108,7 @@ namespace CouponCodes.Controllers
                         return StatusCode(403, ModelState); // HTTP 403 Forbidden
                     }
                 }
-                else // Last coupon was non stackable
+                else // The latest coupon was non stackable
                 {
                     ModelState.AddModelError("", "A non-stackable coupon has already been applied. No further discounts are allowed.");
                     return BadRequest(ModelState);
@@ -116,7 +117,7 @@ namespace CouponCodes.Controllers
             else  // Coupon not found in the database
             {
                 ModelState.AddModelError("", "Invalid coupon code.");
-                return NotFound(ModelState); // HTTP 404 Not Found
+                return NotFound("Not Found! Invalid coupon code."); // HTTP 404 Not Found
             }
 
             // Update the static finalPrice variable
@@ -126,9 +127,10 @@ namespace CouponCodes.Controllers
             ViewBag.DiscountedPrice = currentPrice;
 
             // Return to the "CouponEnter" view
+            /*return View("CouponEnter");*/
+            // Return Ok (200) and the price after discount
             return Ok(new { DiscountedPrice = currentPrice });
-			/*return View("CouponEnter");*/
-		}
+        }
 
 
         // *********************************** Coupons system Functions *************************************
@@ -164,7 +166,6 @@ namespace CouponCodes.Controllers
         {
             if (ModelState.IsValid)
             {
-
 				// Check if the coupon code already exists in the database
 				var existingCoupon =  _context.Coupon.Any(c => c.CodeCoupon == coupon.CodeCoupon);
 
@@ -186,6 +187,7 @@ namespace CouponCodes.Controllers
                     coupon.UserId = user.Email;
                 }
 
+                // if usageLimit stay 0, mean that no chacnge its original, so make it null to mean infinity
                 if (coupon.UsageLimit == 0)
                 {
                     coupon.UsageLimit = null;
@@ -206,18 +208,19 @@ namespace CouponCodes.Controllers
                 /*return RedirectToAction("Index");*/
             }
 
-			// If the model state is invalid, return the same view with the coupon object
-			return BadRequest(ModelState);
-			//return View(coupon);
-		}
+            // If the model state is invalid, return the same view with the coupon object
+            //return View(coupon);
+            return BadRequest(ModelState);
+        }
 
         //View function
         // GET: Display existing form details of the coupon
         // Only admin can do this (beacuse only admin can enter to the coupons page)
         [HttpGet("GetCouponDetails")]
         [Authorize]
-        public IActionResult Details(int id)
+        public IActionResult showCouponData(int id)
         {
+            // Search coupon id in the database
             var coupon = _context.Coupon.Find(id);
             if (coupon == null)
             {
@@ -228,20 +231,6 @@ namespace CouponCodes.Controllers
             /*return View(coupon);*/
         }
 
-        //View function
-        // GET: Display existing form to edit the coupon
-        // Only admin can do this (beacuse only admin can enter to the coupons page)
-        [Authorize]
-        public IActionResult Edit(int id)
-        {
-            var coupon = _context.Coupon.Find(id);
-            if (coupon == null)
-            {
-                return NotFound("Coupon not found!");
-            }
-            return Ok(coupon);
-            /*return View(coupon);*/
-        }
 
         // POST: Edit an existing coupon (Excute the command)
         // Only admin can do this (beacuse only admin can enter to the coupons page)
@@ -252,6 +241,8 @@ namespace CouponCodes.Controllers
         {
             if (ModelState.IsValid)
             {
+                
+                // Update coupon data in database
                 _context.Coupon.Update(coupon);
                 _context.SaveChanges();
                 return Ok(coupon);
@@ -261,19 +252,6 @@ namespace CouponCodes.Controllers
             /* return View(coupon);*/
         }
 
-        //View function
-        // Display confirmation page to delete a coupon
-        // Only admin can do this (beacuse only admin can enter to the coupons page)
-        public IActionResult Delete(int id)
-        {
-            var coupon = _context.Coupon.Find(id);
-            if (coupon == null)
-            {
-                return NotFound();
-            }
-            return Ok(coupon);
-            /*return View(coupon);*/
-        }
 
         // POST: Delete a coupon(Excute the command)
         // Only admin can do this (beacuse only admin can enter to the coupons page)
@@ -282,13 +260,19 @@ namespace CouponCodes.Controllers
         /*[ValidateAntiForgeryToken]*/
         public IActionResult DeleteConfirmed(int id)
         {
+            // Search for coupon in database
             var coupon = _context.Coupon.Find(id);
+
+            // Check if coupon exist (fount in the database)
             if (coupon != null)
             {
+                // Remove it from database
                 _context.Coupon.Remove(coupon);
                 _context.SaveChanges();
+                return Ok("Deleted Successfully");
             }
-            return Ok("Deleted Successfully");
+            // Coupon not found
+            return BadRequest("Coupon not found!");
             /*return RedirectToAction("Index");*/
         }
 
@@ -307,13 +291,15 @@ namespace CouponCodes.Controllers
         [HttpPost("CouponsByUser")]
         public IActionResult FilterCouponsByUser(string userId)
         {
+            // Iterait over the coupons and save only the coupons that the userId(email) created
             var coupons = _context.Coupon.Where(c => c.UserId == userId).ToList();
-            TempData["FilteredCoupons"] = JsonConvert.SerializeObject(coupons); // Store filtered data for the excel
+            // Store filtered data for the excel (convert from .net object to string)
+            TempData["FilteredCoupons"] = JsonConvert.SerializeObject(coupons); 
             return Ok(coupons);
             /*return View("CouponsReport", coupons);*/
         }
 
-        // Create a class to handle the DateRange input
+        // Created class to handle the DateRange input(so in swagger it will be already in correct format)
         public class DateRangeRequest
         {
             [JsonConverter(typeof(IsoDateTimeConverter))]
@@ -327,6 +313,7 @@ namespace CouponCodes.Controllers
         [HttpPost("CouponsByDate")]
         public IActionResult FilterCouponsByDate([FromBody] DateRangeRequest dateRange)
         {
+            // Iterait over the coupons and save only the coupons that the created between the start and end dates
             var coupons = _context.Coupon.Where(c => c.CreationDateAndTime >= dateRange.StartDate && c.CreationDateAndTime <= dateRange.EndDate).ToList();
             // Store filtered data for the excel (convert from .net object to string)
             TempData["FilteredCoupons"] = JsonConvert.SerializeObject(coupons);
@@ -343,20 +330,24 @@ namespace CouponCodes.Controllers
             // Get filtered data from TempData if available
             if (TempData["FilteredCoupons"] != null)
             {
-                // get filter coupons (convert back from json to list object)
+                // Get filter coupons (convert back from json to list object)
                 coupons = JsonConvert.DeserializeObject<List<Coupon>>(TempData["FilteredCoupons"].ToString());
             }
-            else
+            else // Meaning we didnt filter earlier
             {
-                coupons = _context.Coupon.ToList(); // Default to full list if no filter applied
+                // full coupon list
+                coupons = _context.Coupon.ToList(); 
             }
 
             var fileName = "Coupons.xlsx";
+            // Sent to the generateExcel file to generate
             return GenerateExcel(fileName, coupons);
         }
 
+        // Generate Excel with ClosedXML package
         private FileResult GenerateExcel(string fileName, IEnumerable<Coupon> coupons)
         {
+            // Build table for the coupons
             DataTable dataTable = new DataTable("Coupons");
             dataTable.Columns.AddRange(new DataColumn[]
             {
@@ -389,13 +380,18 @@ namespace CouponCodes.Controllers
             }
 
             // Scope for create the excel
+            //Create workbook of excel
             using (XLWorkbook wb = new XLWorkbook())
             {
+                // Add to the workbook the data table
                 wb.Worksheets.Add(dataTable);
+                // Create stream memory to save binary file data in memory ( the mid station from server to client)
                 using (MemoryStream stream = new MemoryStream())
                 {
+                    // Write the wrokbook data to the memory
                     wb.SaveAs(stream);
 
+                    // Return the excel file
                     return File(stream.ToArray(),
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         fileName);

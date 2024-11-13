@@ -8,7 +8,7 @@ using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-// This Controller created to controller over the register data (email,password) and give it a admin role
+// This Controller created to controller over the register data and Login data (email,password) 
 namespace CouponCodes.Controllers
 {
     public class AccountController : Controller
@@ -36,7 +36,8 @@ namespace CouponCodes.Controllers
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
             if (ModelState.IsValid)
-            {
+            {   
+                // create user object
                 var user = new IdentityUser { UserName = model.Email, Email = model.Email };
                 var result = await _userManager.CreateAsync(user, model.Password);
 
@@ -49,16 +50,15 @@ namespace CouponCodes.Controllers
                     return Ok("Register/create new account Successfully");
                 }
 
-                // If registration fails, show the errors
+                // If Register fails, show errors to show what happend (frontend size)
                 foreach (var error in result.Errors)
                 {
                     ModelState.AddModelError(string.Empty, error.Description);
                 }
-
-                // Return a 400 Bad Request with validation errors
+                // return bad Request if error about user
                 return BadRequest(ModelState);
             }
-
+            // return bad request if model isnt valid
             return BadRequest(ModelState);
         }
 
@@ -77,26 +77,31 @@ namespace CouponCodes.Controllers
 		{
 			if (ModelState.IsValid)
 			{
+                // check if the user email in the database
 				var user = await _userManager.FindByEmailAsync(model.Email);
 				if (user != null)
 				{
-					var result = await _signInManager.PasswordSignInAsync(user, model.Password,model.RememberMe, false);
-					if (result.Succeeded)
+                    // try to sign in with the email and the password
+                    var result = await _signInManager.PasswordSignInAsync(user, model.Password,model.RememberMe, false);
+					if (result.Succeeded) 
 					{
-                        // Return the token in the response
+                        // Return ok as Successfull
                         return Ok("Login Successfully");
                         /*return RedirectToAction("CouponEnter", "Coupons"); //*/
                     }
+                    // Return error of invalid data given
 					ModelState.AddModelError(string.Empty, "Invalid login attempt. Email or password are wrong!");
                     return BadRequest("Invalid login attempt. Email or password are wrong!");
 				}
-				else
+				else // User email not found (so not registered yet)
 				{
+                    // Return Not found user 404 code
 					ModelState.AddModelError(string.Empty, "User does not exist.");
                     return NotFound("User not found!");
 				}
 			}
-            return Ok(model);
+
+            return BadRequest("Not valid");
 			//return View(model);
 		}
     }

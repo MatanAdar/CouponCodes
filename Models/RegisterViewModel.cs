@@ -5,6 +5,7 @@ namespace CouponCodes.Models
 {
     public class RegisterViewModel
     {
+        // Email
         [Required]
         [EmailAddress]
         public string Email { get; set; }

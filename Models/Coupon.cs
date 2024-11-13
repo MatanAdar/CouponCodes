@@ -10,6 +10,7 @@ namespace CouponCodes.Models
 
         }
 
+        // Incresing Primiry key of coupons
         [Key]
         public int Id { get; set; }
 
@@ -56,14 +57,14 @@ namespace CouponCodes.Models
         public int? UsageLimit { get; set; }
 
    
-        // Check if the coupon is still valid - True if valid, False if expired
+        // Check if the coupon date is still valid
         public bool IsDateValid()
         {
             return (!ExpirationDate.HasValue || ExpirationDate > DateTime.Now);
         }
 
 
-        // Check if the coupon is still valid - True if valid, False if surpass the usage limit he have
+        // Check if the coupon Limit is not reached
         public bool IsUsageValid()
         {
             return UsageLimit == null || TimesUsed < UsageLimit;

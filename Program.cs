@@ -25,7 +25,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "An API for managing coupons",
     });
 
-    // Optionally add security requirements if using JWT or other authentication
+    // Add security requirements for authentication
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -72,7 +72,6 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Enable Swagger middleware to serve the Swagger UI and JSON endpoint
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -83,7 +82,7 @@ app.UseSwaggerUI(c =>
 // Set up your API routes
 app.MapControllers();
 
-// Seed admin user
+// Set admin user in the database
 using (var scope = app.Services.CreateScope())
 {
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
