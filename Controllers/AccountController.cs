@@ -20,7 +20,8 @@ namespace CouponCodes.Controllers
             _roleManager = roleManager;
         }
 
-        // Get the registration view
+        // GET: Registration view
+        [Authorize]
         [HttpGet]
         public IActionResult Register()
         {
@@ -28,7 +29,6 @@ namespace CouponCodes.Controllers
         }
 
         // Post registration form
-        [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModel model)

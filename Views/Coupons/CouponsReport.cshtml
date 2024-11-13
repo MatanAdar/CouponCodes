@@ -12,6 +12,7 @@
     <button type="submit">Filter by Date</button>
 </form>
 
+@* Search by email (decided to use email for easier the input to the user)*@
 <form asp-action="FilterCouponsByUser" method="post">
     <label for="userId">User ID(email):</label>
     <input type="email" id="userId" name="userId" />

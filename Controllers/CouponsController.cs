@@ -139,7 +139,7 @@ namespace CouponCodes.Controllers
         // View function
         // GET: Coupons/Index go to this page and show all the copouns
         // Only admin can see the coupons and create/delete and etc
-        [Authorize(Roles = "Admin")]
+        [Authorize]
         public IActionResult Index()
         {
             // Display all coupons
@@ -168,11 +168,19 @@ namespace CouponCodes.Controllers
                 // Fetch user data
                 // We have UserId header in the database(Generate when created account),
                 // but i want that the coupon userId will be the email of the account that made the coupon becuase its unique
+                // and when filter by userId in the reports we can enter something easier like email and not generated userId
                 var user = await _userManager.GetUserAsync(User);
                 if(user != null)
                 {
                     coupon.UserId = user.Email;
                 }
+
+                /*// Fetch userId the user who create the coupon (decided to use email and not userId)
+                var userId = _userManager.GetUserId(User);
+                if(userId != null)
+                {
+                    coupon.UserId = userId;
+                }*/
 
                 // Add the coupon to the database
                 _context.Coupon.Add(coupon);
@@ -258,7 +266,7 @@ namespace CouponCodes.Controllers
 
         // View Function
         // GET: Coupons/CouponsReport
-        [Authorize(Roles = "Admin")]
+        [Authorize]
         public IActionResult CouponsReport()
         {
             var coupons = _context.Coupon.ToList();
